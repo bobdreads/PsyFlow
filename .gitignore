@@ -61,3 +61,5 @@ coverage/
 # =========================
 .cache/
 .tmp/
+
+/app/generated/prisma

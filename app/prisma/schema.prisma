@@ -1,0 +1,191 @@
+// DATA SOURCE E GENERATOR
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// 1. MÓDULO DE USUÁRIO E CONFIGURAÇÃO
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relacionamentos
+  settings     Settings?
+  taxProfile   TaxProfile?
+  patients     Patient[]
+  sessions     Session[]
+  expenses     Expense[]
+  categories   Category[]
+  backups      Backup[]
+  auditLogs    AuditLog[]
+}
+
+model Settings {
+  id                  String   @id @default(uuid())
+  userId              String   @unique
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  timezone            String   @default("America/Sao_Paulo")
+  currency            String   @default("BRL")
+  defaultSessionValue Decimal  @default(0.0) // Valor padrão da sessão
+  theme               String   @default("light") // 'light' or 'dark'
+  
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+// 2. CORE CLÍNICO (PACIENTES E SESSÕES)
+model Patient {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  name        String
+  email       String?
+  phone       String?
+  cpf         String?
+  birthDate   DateTime?
+  address     String?
+  
+  deletedAt   DateTime? // Soft Delete
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  sessions    Session[]
+}
+
+model Session {
+  id              String        @id @default(uuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  patientId       String
+  patient         Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  date            DateTime
+  duration        Int           @default(50) // Em minutos [cite: 95]
+  type            SessionType   @default(INDIVIDUAL) // [cite: 94]
+  modality        SessionModality @default(ONLINE)   // [cite: 94]
+  
+  // Financeiro da Sessão (Receita)
+  value           Decimal
+  paidAmount      Decimal       @default(0.0)
+  paymentStatus   PaymentStatus @default(PENDING) // [cite: 97]
+  paymentMethod   String?       // PIX, Dinheiro, Cartão, etc.
+  
+  observation     String?       // Observações administrativas [cite: 96]
+  
+  deletedAt       DateTime?     // Soft Delete
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+// 3. FINANCEIRO E FISCAL
+model Category {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  name        String
+  type        TransactionType // INCOME (Receita) ou EXPENSE (Despesa)
+  icon        String?
+  color       String?
+  
+  expenses    Expense[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Expense {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId    String?
+  category      Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  description   String
+  amount        Decimal   // Valor da despesa 
+  date          DateTime
+  isPaid        Boolean   @default(false)
+  recurrence    String?   // 'MONTHLY', 'WEEKLY', etc.
+
+  deletedAt     DateTime? // Soft Delete
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model TaxProfile {
+  id            String    @id @default(uuid())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  regime        TaxRegime // PF, MEI, SIMPLES [cite: 107-110]
+  
+  // Dados específicos para cálculo
+  document      String?   // CPF ou CNPJ
+  aliquota      Decimal?  // Para Simples Nacional
+  fatorR        Decimal?  // Para Simples Nacional [cite: 110]
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// 4. SISTEMA (LOGS E BACKUP)
+model Backup {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  filePath    String
+  fileSize    Int
+  createdAt   DateTime @default(now())
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  action      String   // CREATE, UPDATE, DELETE, LOGIN
+  entity      String   // PATIENT, SESSION, ETC.
+  entityId    String?
+  details     String?  // JSON string
+  
+  createdAt   DateTime @default(now())
+}
+
+// ENUMS
+enum SessionType {
+  INDIVIDUAL
+  GROUP
+  COUPLE
+}
+
+enum SessionModality {
+  ONLINE
+  PRESENTIAL
+}
+
+enum PaymentStatus {
+  PENDING
+  PARTIAL
+  PAID
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum TaxRegime {
+  PF      // Pessoa Física
+  MEI     // Microempreendedor Individual
+  SIMPLES // Simples Nacional
+}
