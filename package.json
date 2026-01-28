@@ -10,13 +10,14 @@
     "dev:front": "vite",
     "dev:electron": "npm run build:electron && wait-on tcp:3000 && cross-env NODE_ENV=development npx electron dist/electron/main/main.js",
     "build": "vite build && tsc",
-    "postinstall": "electron-builder install-app-deps"
+    "postinstall": "electron-builder -f -w better-sqlite3 install-app-deps"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
+    "@electron/rebuild": "^4.0.3",
     "@prisma/adapter-better-sqlite3": "^7.3.0",
     "@tailwindcss/postcss": "^4.1.18",
     "@types/bcryptjs": "^2.4.6",
