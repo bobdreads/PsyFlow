@@ -4,15 +4,26 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "concurrently \"npm run dev:front\" \"npm run dev:electron\"",
+    "dev:front": "vite",
+    "dev:electron": "wait-on tcp:3000 && cross-env NODE_ENV=development electron -r ts-node/register/transpile-only app/electron/main/main.ts",
+    "build": "vite build && tsc",
+    "postinstall": "electron-builder install-app-deps"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.18",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/react": "^19.2.10",
+    "@types/react-dom": "^19.2.3",
     "@typescript-eslint/eslint-plugin": "^8.54.0",
     "@typescript-eslint/parser": "^8.54.0",
+    "@vitejs/plugin-react": "^5.1.2",
+    "autoprefixer": "^10.4.23",
     "concurrently": "^9.2.1",
     "cross-env": "^10.1.0",
     "electron": "^40.0.0",
@@ -21,12 +32,25 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",
     "husky": "^9.1.7",
+    "postcss": "^8.5.6",
     "prettier": "^3.8.1",
     "prisma": "^7.3.0",
-    "typescript": "^5.9.3"
+    "tailwindcss": "^4.1.18",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1",
+    "wait-on": "^9.0.3"
   },
   "dependencies": {
+    "@prisma/client": "^7.3.0",
+    "bcryptjs": "^3.0.3",
+    "clsx": "^2.1.1",
     "dotenv": "^17.2.3",
-    "winston": "^3.19.0"
+    "framer-motion": "^12.29.2",
+    "lucide-react": "^0.563.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "tailwind-merge": "^3.4.0",
+    "winston": "^3.19.0",
+    "zod": "^4.3.6"
   }
 }

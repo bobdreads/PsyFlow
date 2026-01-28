@@ -1,5 +1,6 @@
 import { app, BrowserWindow } from 'electron';
 import { initBackend } from '../../backend';
+import { setupAuthIPC } from './ipc/authIPC';
 import path from 'path';
 
 // Segurança: Impedir múltiplas instâncias
@@ -34,6 +35,7 @@ if (!gotTheLock) {
   app.whenReady().then(() => {
   // INICIALIZA O BACKEND AQUI
   initBackend();
+  setupAuthIPC();
 
   createWindow();
 
