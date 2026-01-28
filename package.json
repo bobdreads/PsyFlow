@@ -2,12 +2,13 @@
   "name": "psyflow",
   "version": "1.0.0",
   "description": "",
-  "main": "dist/main.js",
+  "main": "app/electron/main/main.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "concurrently \"npm run dev:front\" \"npm run dev:electron\"",
+    "build:electron": "tsc -p tsconfig.electron.json",
     "dev:front": "vite",
-    "dev:electron": "wait-on tcp:3000 && cross-env NODE_ENV=development ts-node app/electron/main/main.ts",
+    "dev:electron": "npm run build:electron && wait-on tcp:3000 && cross-env NODE_ENV=development npx electron dist/electron/main/main.js",
     "build": "vite build && tsc",
     "postinstall": "electron-builder install-app-deps"
   },

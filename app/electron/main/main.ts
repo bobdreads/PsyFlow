@@ -1,75 +1,27 @@
-import electron from 'electron';
-import type { BrowserWindow as BrowserWindowType } from 'electron';
-import { initBackend } from '../../backend';
-import { setupAuthIPC } from './ipc/authIPC';
+import { app, BrowserWindow } from 'electron';
 import path from 'path';
 
-const { app, BrowserWindow, ipcMain } = electron;
+const isDev = process.env.NODE_ENV === 'development';
 
-let mainWindow: BrowserWindowType | null = null;
+let mainWindow: BrowserWindow | null = null;
 
-// ✅ CORRIGIDO: Single instance DEPOIS do app.whenReady()
-app.whenReady().then(async () => {
-  // Single instance lock (LINHA 7 OK agora)
-  const gotTheLock = app.requestSingleInstanceLock();
-  
-  if (!gotTheLock) {
-    app.quit();
-    return;
-  }
-
-  // Segunda instância foca a primeira
-  app.on('second-instance', () => {
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.focus();
-    }
-  });
-
-  // INICIALIZA BACKEND + IPC PRIMEIRO
-  await initBackend();
-  setupAuthIPC();
-
-  createWindow();
-
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
-  });
-});
-
-function createWindow(): void {
+function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
-      preload: path.join(__dirname, '../preload/preload.js'),
-      sandbox: false
-    },
-    show: false  // Esconde até carregar
-  });
-
-  mainWindow.once('ready-to-show', () => {
-    mainWindow?.show();
-    if (process.env.NODE_ENV === 'development') {
-      mainWindow?.webContents.openDevTools();
+      preload: path.join(__dirname, 'preload.js')
     }
   });
 
-  if (process.env.NODE_ENV === 'development') {
+  if (isDev) {
     mainWindow.loadURL('http://localhost:3000');
+    mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../../../dist/frontend/index.html'));
+    mainWindow.loadFile(
+      path.join(__dirname, '../../frontend/index.html')
+    );
   }
-
-  mainWindow.on('closed', () => {
-    mainWindow = null;
-  });
 }
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
-});
+app.whenReady().then(createWindow);

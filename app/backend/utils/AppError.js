@@ -1,0 +1,13 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.AppError = void 0;
+class AppError extends Error {
+    constructor(message, statusCode = 400) {
+        super(message);
+        this.statusCode = statusCode;
+        // Identifica se é um erro operacional (previsível) ou bug de programação
+        this.isOperational = true;
+        Error.captureStackTrace(this, this.constructor);
+    }
+}
+exports.AppError = AppError;
