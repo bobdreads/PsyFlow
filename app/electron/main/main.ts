@@ -1,40 +1,33 @@
-import { app, BrowserWindow } from 'electron';
+import electron from 'electron';
+import type { BrowserWindow as BrowserWindowType } from 'electron';
 import { initBackend } from '../../backend';
 import { setupAuthIPC } from './ipc/authIPC';
 import path from 'path';
 
-// Segurança: Impedir múltiplas instâncias
-const gotTheLock = app.requestSingleInstanceLock();
+const { app, BrowserWindow, ipcMain } = electron;
 
-if (!gotTheLock) {
-  app.quit();
-} else {
-  let mainWindow: BrowserWindow | null = null;
+let mainWindow: BrowserWindowType | null = null;
 
-  const createWindow = () => {
-    mainWindow = new BrowserWindow({
-      width: 1200,
-      height: 800,
-      webPreferences: {
-        nodeIntegration: false, // Segurança obrigatória
-        contextIsolation: true, // Segurança e LGPD 
-        preload: path.join(__dirname, '../preload/preload.js'),
-        sandbox: false // Necessário para Prisma local em alguns casos, mas monitorar
-      },
-    });
+// ✅ CORRIGIDO: Single instance DEPOIS do app.whenReady()
+app.whenReady().then(async () => {
+  // Single instance lock (LINHA 7 OK agora)
+  const gotTheLock = app.requestSingleInstanceLock();
+  
+  if (!gotTheLock) {
+    app.quit();
+    return;
+  }
 
-    // Em dev, carregaremos o localhost. Em prod, o arquivo index.html
-    if (process.env.NODE_ENV === 'development') {
-      mainWindow.loadURL('http://localhost:3000');
-      mainWindow.webContents.openDevTools();
-    } else {
-      mainWindow.loadFile(path.join(__dirname, '../../../dist/frontend/index.html'));
+  // Segunda instância foca a primeira
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
     }
-  };
+  });
 
-  app.whenReady().then(() => {
-  // INICIALIZA O BACKEND AQUI
-  initBackend();
+  // INICIALIZA BACKEND + IPC PRIMEIRO
+  await initBackend();
   setupAuthIPC();
 
   createWindow();
@@ -44,7 +37,39 @@ if (!gotTheLock) {
   });
 });
 
-  app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') app.quit();
+function createWindow(): void {
+  mainWindow = new BrowserWindow({
+    width: 1200,
+    height: 800,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, '../preload/preload.js'),
+      sandbox: false
+    },
+    show: false  // Esconde até carregar
+  });
+
+  mainWindow.once('ready-to-show', () => {
+    mainWindow?.show();
+    if (process.env.NODE_ENV === 'development') {
+      mainWindow?.webContents.openDevTools();
+    }
+  });
+
+  if (process.env.NODE_ENV === 'development') {
+    mainWindow.loadURL('http://localhost:3000');
+  } else {
+    mainWindow.loadFile(path.join(__dirname, '../../../dist/frontend/index.html'));
+  }
+
+  mainWindow.on('closed', () => {
+    mainWindow = null;
   });
 }
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
+});
