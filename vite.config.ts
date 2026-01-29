@@ -1,21 +1,32 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import path from 'path';
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import path from 'node:path'
 
 export default defineConfig({
   plugins: [react()],
-  root: 'app/frontend', // Define a raiz do frontend
-  base: './', // Caminhos relativos para Electron
-  build: {
-    outDir: '../../dist/frontend',
-    emptyOutDir: true,
-  },
+  
+  // Estrutura Tauri 2.0: src/ como root
+  root: 'src',
+  publicDir: '../public',
+  
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './app/frontend'),
+      "@": path.resolve(__dirname, "./src"),
     },
   },
+
+  // Tauri dev/build settings
+  clearScreen: false,
   server: {
-    port: 3000,
-  }
-});
+    port: 1420,
+    strictPort: true,
+    watch: {
+      ignored: ["**/src-tauri/**"],
+    },
+  },
+
+  build: {
+    outDir: '../dist',
+    emptyOutDir: true,
+  },
+})
