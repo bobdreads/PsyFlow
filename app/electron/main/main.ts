@@ -5,6 +5,7 @@ import path from 'path';
 import { initBackend } from '../../backend'; // Inicializa banco e logs
 import { setupAuthIPC } from './ipc/authIPC'; // Sistema de Login/Cadastro
 import { setupSettingsIPC } from './ipc/settingsIPC'; // Sistema de Configurações
+import { setupPatientIPC } from './ipc/patientIPC'; // Sistema de Pacientes
 
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -40,6 +41,7 @@ app.whenReady().then(() => {
   // 3. REGISTRA OS EVENTOS (IPCs)
   setupAuthIPC();     // Habilita login e registro
   setupSettingsIPC(); // Habilita salvar/ler configurações
+  setupPatientIPC();  // Habilita gerenciamento de pacientes
 
   // 4. CRIA A JANELA
   createWindow();
