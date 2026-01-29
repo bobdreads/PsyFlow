@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import path from 'node:path'
+import * as path from "node:path";
 
 export default defineConfig({
   plugins: [react()],
@@ -15,10 +15,15 @@ export default defineConfig({
     },
   },
 
+  css: {
+    postcss: './postcss.config.js',  // opcional, auto-detecta
+  },
+
   // Tauri dev/build settings
   clearScreen: false,
   server: {
-    port: 1420,
+    host: '127.0.0.1',
+    port: 3000,
     strictPort: true,
     watch: {
       ignored: ["**/src-tauri/**"],
