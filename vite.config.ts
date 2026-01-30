@@ -6,7 +6,6 @@ export default defineConfig({
   plugins: [react()],
   
   // Estrutura Tauri 2.0: src/ como root
-  root: 'src',
   publicDir: '../public',
   
   resolve: {
@@ -34,4 +33,6 @@ export default defineConfig({
     outDir: '../dist',
     emptyOutDir: true,
   },
+
+  envPrefix: ['VITE_', 'TAURI_'],
 })
