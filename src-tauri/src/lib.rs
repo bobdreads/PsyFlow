@@ -4,7 +4,7 @@ pub mod db;
 use tauri::{State, Manager};
 use std::sync::Mutex;
 use rusqlite::{Connection, params};
-use models::{User, Patient, Settings, ApiResponse};
+use models::{User, Patient, Settings, Session, ApiResponse};
 use uuid::Uuid;
 use bcrypt::{hash, verify, DEFAULT_COST};
 
@@ -29,7 +29,6 @@ fn register(state: State<AppState>, payload: serde_json::Value) -> ApiResponse<U
     let hashed = hash(password, DEFAULT_COST).unwrap();
     let user_id = Uuid::new_v4().to_string();
 
-    // 1. Criar Usuário
     let res = conn.execute(
         "INSERT INTO User (id, name, email, password_hash) VALUES (?1, ?2, ?3, ?4)",
         params![user_id, name, email, hashed],
@@ -37,7 +36,6 @@ fn register(state: State<AppState>, payload: serde_json::Value) -> ApiResponse<U
 
     match res {
         Ok(_) => {
-            // 2. Criar Settings Padrão
             let settings_id = Uuid::new_v4().to_string();
             let _ = conn.execute(
                 "INSERT INTO Settings (id, userId) VALUES (?1, ?2)",
@@ -61,14 +59,13 @@ fn login(state: State<AppState>, payload: serde_json::Value) -> ApiResponse<User
 
     let conn = state.db.lock().unwrap();
     
-    // Buscar usuário e hash
     let mut stmt = conn.prepare("SELECT id, name, email, password_hash FROM User WHERE email = ?1").unwrap();
     let user_iter = stmt.query_map(params![email], |row| {
         Ok((
-            row.get::<_, String>(0)?, // id
-            row.get::<_, String>(1)?, // name
-            row.get::<_, String>(2)?, // email
-            row.get::<_, String>(3)?, // hash
+            row.get::<_, String>(0)?,
+            row.get::<_, String>(1)?,
+            row.get::<_, String>(2)?,
+            row.get::<_, String>(3)?,
         ))
     });
 
@@ -90,7 +87,6 @@ fn create_patient(state: State<AppState>, payload: serde_json::Value) -> ApiResp
     let conn = state.db.lock().unwrap();
     let id = Uuid::new_v4().to_string();
     
-    // Extrair dados com segurança
     let user_id = payload["userId"].as_str().unwrap_or("");
     let name = payload["name"].as_str().unwrap_or("");
     let phone = payload["phone"].as_str().map(|s| s.to_string());
@@ -143,10 +139,29 @@ fn list_patients(state: State<AppState>, user_id: String) -> ApiResponse<Vec<Pat
     }
 }
 
+// NOVO: Editar Paciente
+#[tauri::command]
+fn update_patient(state: State<AppState>, id: String, payload: serde_json::Value) -> ApiResponse<()> {
+    let conn = state.db.lock().unwrap();
+    
+    let name = payload["name"].as_str().unwrap_or("");
+    let phone = payload["phone"].as_str().map(|s| s.to_string());
+    let email = payload["email"].as_str().map(|s| s.to_string());
+
+    let res = conn.execute(
+        "UPDATE Patient SET name = ?1, phone = ?2, email = ?3, updatedAt = CURRENT_TIMESTAMP WHERE id = ?4",
+        params![name, phone, email, id],
+    );
+
+    match res {
+        Ok(_) => ApiResponse::success(()),
+        Err(e) => ApiResponse::error(e.to_string()),
+    }
+}
+
 #[tauri::command]
 fn delete_patient(state: State<AppState>, id: String, user_id: String) -> ApiResponse<()> {
     let conn = state.db.lock().unwrap();
-    // Soft delete
     let res = conn.execute(
         "UPDATE Patient SET deletedAt = CURRENT_TIMESTAMP WHERE id = ?1 AND userId = ?2",
         params![id, user_id],
@@ -156,6 +171,103 @@ fn delete_patient(state: State<AppState>, id: String, user_id: String) -> ApiRes
         Ok(_) => ApiResponse::success(()),
         Err(e) => ApiResponse::error(e.to_string()),
     }
+}
+
+// --- COMANDOS DE SESSÕES ---
+
+#[tauri::command]
+fn create_session(state: State<AppState>, payload: serde_json::Value) -> ApiResponse<Session> {
+    let conn = state.db.lock().unwrap();
+    let id = Uuid::new_v4().to_string();
+
+    let user_id = payload["userId"].as_str().unwrap_or("");
+    let patient_id = payload["patientId"].as_str().unwrap_or("");
+    let start_time = payload["startTime"].as_str().unwrap_or("");
+    let end_time = payload["endTime"].as_str().unwrap_or("");
+    let notes = payload["notes"].as_str().map(|s| s.to_string());
+    let value = payload["value"].as_f64().unwrap_or(0.0);
+    let status = payload["status"].as_str().unwrap_or("scheduled");
+
+    let res = conn.execute(
+        "INSERT INTO Session (id, userId, patientId, startTime, endTime, notes, value, status) 
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        params![id, user_id, patient_id, start_time, end_time, notes, value, status],
+    );
+
+    match res {
+        Ok(_) => ApiResponse::success(Session {
+            id,
+            user_id: user_id.to_string(),
+            patient_id: patient_id.to_string(),
+            start_time: start_time.to_string(),
+            end_time: end_time.to_string(),
+            notes,
+            value,
+            status: status.to_string(),
+            created_at: chrono::Local::now().to_rfc3339(),
+        }),
+        Err(e) => ApiResponse::error(e.to_string()),
+    }
+}
+
+// CORREÇÃO: Removemos a função genérica problemática e usamos esta específica
+#[tauri::command]
+fn list_sessions_by_patient(state: State<AppState>, patient_id: String) -> ApiResponse<Vec<Session>> {
+    let conn = state.db.lock().unwrap();
+    let mut stmt = conn.prepare("SELECT id, userId, patientId, startTime, endTime, notes, value, status, createdAt FROM Session WHERE patientId = ?1 AND deletedAt IS NULL ORDER BY startTime DESC").unwrap();
+    
+    // Como patient_id é passado como argumento da função, ele vive o suficiente!
+    let rows = stmt.query_map(params![patient_id], |row| {
+        Ok(Session {
+            id: row.get(0)?,
+            user_id: row.get(1)?,
+            patient_id: row.get(2)?,
+            start_time: row.get(3)?,
+            end_time: row.get(4)?,
+            notes: row.get(5)?,
+            value: row.get(6)?,
+            status: row.get(7)?,
+            created_at: row.get(8)?,
+        })
+    });
+
+    match rows {
+        Ok(iter) => {
+            let sessions: Vec<Session> = iter.filter_map(Result::ok).collect();
+            ApiResponse::success(sessions)
+        },
+        Err(e) => ApiResponse::error(e.to_string()),
+    }
+}
+
+// NOVO: Editar Sessão
+#[tauri::command]
+fn update_session(state: State<AppState>, id: String, payload: serde_json::Value) -> ApiResponse<()> {
+    let conn = state.db.lock().unwrap();
+    
+    let start_time = payload["startTime"].as_str().unwrap_or("");
+    let end_time = payload["endTime"].as_str().unwrap_or("");
+    let notes = payload["notes"].as_str().map(|s| s.to_string());
+    let value = payload["value"].as_f64().unwrap_or(0.0);
+    let status = payload["status"].as_str().unwrap_or("scheduled");
+
+    let res = conn.execute(
+        "UPDATE Session SET startTime = ?1, endTime = ?2, notes = ?3, value = ?4, status = ?5, updatedAt = CURRENT_TIMESTAMP WHERE id = ?6",
+        params![start_time, end_time, notes, value, status, id],
+    );
+
+    match res {
+        Ok(_) => ApiResponse::success(()),
+        Err(e) => ApiResponse::error(e.to_string()),
+    }
+}
+
+// NOVO: Excluir Sessão
+#[tauri::command]
+fn delete_session(state: State<AppState>, id: String) -> ApiResponse<()> {
+    let conn = state.db.lock().unwrap();
+    let res = conn.execute("UPDATE Session SET deletedAt = CURRENT_TIMESTAMP WHERE id = ?1", params![id]);
+    match res { Ok(_) => ApiResponse::success(()), Err(e) => ApiResponse::error(e.to_string()) }
 }
 
 // --- COMANDOS DE SETTINGS ---
@@ -187,20 +299,16 @@ fn get_settings(state: State<AppState>, user_id: String) -> ApiResponse<Settings
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_log::Builder::default().build()) // Agora temos o plugin!
+        .plugin(tauri_plugin_log::Builder::default().build())
         .setup(|app| {
-            // Inicializa o Banco
             let conn = db::init_db(app.handle()).expect("failed to init db");
-            // Gerencia o estado
             app.manage(AppState { db: Mutex::new(conn) });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            register,
-            login,
-            create_patient,
-            list_patients,
-            delete_patient,
+            register, login,
+            create_patient, list_patients, update_patient, delete_patient, // Pacientes
+            create_session, list_sessions_by_patient, update_session, delete_session, // Sessões
             get_settings
         ])
         .run(tauri::generate_context!())

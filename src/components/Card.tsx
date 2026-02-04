@@ -1,11 +1,10 @@
-import React from 'react';
+import React from 'react'
 
-interface CardProps {
-  children: React.ReactNode;
-  className?: string;
+interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+  children: React.ReactNode
 }
 
-export const Card: React.FC<CardProps> = ({ children, className = '' }) => {
+export const Card: React.FC<CardProps> = ({ children, className = '', ...props }) => {
   return (
     <div 
       className={`
@@ -17,8 +16,9 @@ export const Card: React.FC<CardProps> = ({ children, className = '' }) => {
         p-8 
         ${className}
       `}
+      {...props}
     >
       {children}
     </div>
-  );
-};
+  )
+}

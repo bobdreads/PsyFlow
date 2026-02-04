@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")] // <--- O Segredo: Converte snake_case para camelCase
 pub struct User {
     pub id: String,
     pub name: String,
@@ -8,6 +9,7 @@ pub struct User {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Settings {
     pub id: String,
     pub user_id: String,
@@ -19,6 +21,7 @@ pub struct Settings {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Patient {
     pub id: String,
     pub user_id: String,
@@ -30,7 +33,21 @@ pub struct Patient {
     pub created_at: String,
 }
 
-// Resposta padrão para o Frontend
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Session {
+    pub id: String,
+    pub patient_id: String,
+    pub user_id: String,
+    pub start_time: String,
+    pub end_time: String,
+    pub notes: Option<String>,
+    pub value: f64,
+    pub status: String,
+    pub created_at: String,
+}
+
+// Resposta Padrão
 #[derive(Serialize)]
 pub struct ApiResponse<T> {
     pub success: bool,

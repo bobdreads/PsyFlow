@@ -28,9 +28,9 @@ export const api = {
     delete: async (id: string, userId: string) => {
       return await invoke<ApiResponse<any>>('delete_patient', { id, userId });
     },
-    update: async (id: string, userId: string, data: any) => {
-      return await invoke<ApiResponse<any>>('update_patient', { id, userId, data });
-    }
+    update: async (id: string, data: any) => {
+        return await invoke<ApiResponse<any>>('update_patient', { id, payload: data });
+    },
   },
 
   settings: {
@@ -40,5 +40,21 @@ export const api = {
     update: async (userId: string, data: any) => {
       return await invoke<ApiResponse<any>>('update_settings', { userId, data });
     }
+  },
+
+  sessions: {
+    create: async (data: any) => {
+      return await invoke<ApiResponse<any>>('create_session', { payload: data });
+    },
+    list: async (patientId: string) => {
+      return await invoke<ApiResponse<any>>('list_sessions_by_patient', { patientId });
+    },
+    update: async (id: string, data: any) => {
+        return await invoke<ApiResponse<any>>('update_session', { id, payload: data });
+    },
+    // NOVO: Delete
+    delete: async (id: string) => {
+        return await invoke<ApiResponse<any>>('delete_session', { id });
+    },
   }
 };

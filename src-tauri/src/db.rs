@@ -57,5 +57,25 @@ pub fn init_db(app_handle: &tauri::AppHandle) -> Result<Connection> {
         [],
     )?;
 
+    // Tabela Session
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS Session (
+            id TEXT PRIMARY KEY,
+            patientId TEXT NOT NULL,
+            userId TEXT NOT NULL,
+            startTime DATETIME NOT NULL,
+            endTime DATETIME NOT NULL,
+            notes TEXT,
+            value REAL DEFAULT 0.0,
+            status TEXT DEFAULT 'scheduled',
+            createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+            deletedAt DATETIME,
+            FOREIGN KEY(patientId) REFERENCES Patient(id),
+            FOREIGN KEY(userId) REFERENCES User(id)
+        )",
+        [],
+    )?;
+
     Ok(conn)
 }
